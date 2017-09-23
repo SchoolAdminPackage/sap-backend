@@ -1,51 +1,64 @@
-import random
+import random, math
 
 #Student has preferences which is a list of tuples of Courses, and a uid
-class Student(object):
+class Student:
 	def __init__(self, prefs, uid):
-		uid = uid
-		preferences = prefs
-	#Student has a .createScheduled(courses) method that returns a ProgrammedStudent with given courses and a schedule with each period to a null
-	def createScheduled(courses):
-		return ScheduledStudent(prefs, uid, courses, 4)
+		self.uid = uid
+		self.preferences = prefs
+	#Student has a .createScheduled(courses) method that returns a ProgrammedStudent with given courses and a schedule with each period to a none
+	def createScheduled(self, courses):
+		ss = ScheduledStudent(self.preferences, self.uid, courses, 4)
+		return ss
 #ScheduledStudent is a subclass of Student that has a list of Courses and a schedule
 class ScheduledStudent(Student):
 	def __init__(self, prefs, uid, courses, numPeriods):
-		super().__init__(prefs, uid)
-		courses = courses
+		self.uid = uid
+		self.preferences = prefs
+		self.courses = courses
 		#Schedule is an dictionary of integers to FilledCourses
-		schedule = {}
+		self.schedule = {}
 		for i in range(numPeriods):
-			schedule[i] = null
+			self.schedule[i] = None
 
 #Course has a uidType and instances(starts as [])
-class Course():
+class Course:
 	def __init__(self, uid):
-		uidType = uid
-		instances = []
+		self.uidType = uid
+		self.instances = []
 	#has a .createFilled(uidInstance, period) that  creates a FilledCourse, adds it to instances, instantiates an empty list of students
-	def createFilled(uidInstance, period):
-		fc = FilledCourse(uidType, uidInstance, period)
-		instances.append(fc)
+	def createFilled(self, uidInstance, period):
+		fc = FilledCourse(self.uidType, uidInstance, period)
+		self.instances.append(fc)
 		return fc
 #FilledCourse is a subclass of CourseInstance that has a list of students registered for the class, a period(unique integer is all that matters), and a uidInstance
 class FilledCourse(Course):
-	def __init__(self, uidType, uid, per):
-		super().__init__(uidType)
-		period = per
-		uidInstance = uid
-		students = []
+	def __init__(self, uidt, uid, per):
+		self.uidType = uidt
+		self.period = per
+		self.uidInstance = uid
+		self.students = []
 
 #parse function (input) -> list of [students]
 #def parseData(data):
 	#return list of students
 
+def typeIn(int, lc):
+	print(lc)
+	print(lc[0].period)
+	print(lc[0].uidInstance)
+	print(lc[0].students)
+	print(lc[0].uidType)
+	for c in lc:
+		if int == c.uidType:
+			return True
+	return False
 #determines preference error for one student
 #returns number of first choices that were selected
 def microFitnessw1(student):
 	sum = 0
+	#print(list(student.schedule.values()))
 	for pref in student.preferences:
-		if pref[1] in student.schedule.itervalues():
+		if typeIn(pref[1].uidType, list(student.schedule.values())):
 			sum += 1
 	return sum
 
@@ -60,13 +73,12 @@ def macroFitnessw1(scheduledStudents):
 def macroFitnessw2(courses):
 	sum = 0
 	for course in courses:
-		for filledCourse in course.instances:
 			sum += 1
 	return sum
 
 #determines fitness of whole system (should be minimized)
-def macroFitness(scheduledStudents, courses, maxClassSize, w1, w2):
-	return w1 * macroFitnessw1(scheduledStudents) + w2 * macroFitnessw2(courses, maxClassSize)
+def macroFitness(scheduledStudents, courses, w1, w2):
+	return w1 * macroFitnessw1(scheduledStudents) + w2 * macroFitnessw2(courses)
 
 #generates all students courses for one parent
 def makeStudentCourses(students):
@@ -79,47 +91,52 @@ def makeStudentCourses(students):
 	return newStudents
 
 #gets which students are getting each class
-def requestsPerCourse(students, maxClassSize):
+def requestsPerCourse(students):
 	#dict to show how many people selected each course
 	requestsPerCourse = {}
 	#to make sure the instance id for each course remains unique
 	courseInstaceIdCounter = 0
 	courses = []
 	for student in students:
-		for course in courses:
-			if preference in requestsPerCourse.iterkeys():
+		for course in student.courses:
+			if course in list(requestsPerCourse.keys()):
 				requestsPerCourse[course].append(student)
 			else:
 				requestsPerCourse[course] = [student]
 	return requestsPerCourse
 
 def firstAvailiblePeriod(student):
-	for period in student.schedule.iterkeys():
-		if student.schedule[period] == null:
+	for period in list(student.schedule.keys()):
+		if student.schedule[period] == None:
 			return period
-	console.log("no available periods")
+	print("no available periods")
 	return -1
 
 #generates randomly filled courses for one parent 
 def fillCourses(students, maxClassSize, requestsPerCourse):
 	#counts uid to avoid duplicates
 	uidInstance = 0
-	switchVarCuzImBadAndNeedACrutch = 1
-	keyList = random.shuffle(requestsPerCourse.iterkeys())
+	keyList = list(requestsPerCourse.keys())
+	random.shuffle(keyList)
 	for course in keyList:
 		for student in requestsPerCourse[course]:
+			switchVarCuzImBadAndNeedACrutch = 1
 			for filledcourse in course.instances:
-				if student.schedule[filledcourse.period] == null and len(filledcourse.students) < maxClassSize:
-					student.schedule[filledcourse.period] = FilledCourse
+				print(student.schedule[filledcourse.period] )
+				if student.schedule[filledcourse.period] == None and len(filledcourse.students) < maxClassSize:
+					#print("case 1")
+					student.schedule[filledcourse.period] = course.createFilled(uidInstance, filledcourse.period)
 					filledcourse.students.append(student)
+					uidInstance += 1
 					switchVarCuzImBadAndNeedACrutch = 0
 					break
-			if (switchVarCuzImBadAndNeedACrutch):
+			if (switchVarCuzImBadAndNeedACrutch == 1):
+				#print("case 2")
 				newFilled = course.createFilled(uidInstance, firstAvailiblePeriod(student))
 				student.schedule[firstAvailiblePeriod(student)] = newFilled
-				newFilled.students.add(student)
+				newFilled.students.append(student)
 				uidInstance += 1
-	return keyList
+	return list(requestsPerCourse.keys())
 
 def getFilledCourses(courses):
 	filledCourses = []
@@ -130,7 +147,7 @@ def getFilledCourses(courses):
 #gets a list of scheduledStudents and the filledCourses in the "parent" world
 def makeParent(students, maxClassSize):
 	new_students = makeStudentCourses(students)
-	studentsPerCourse = requestsPerCourse(new_students, maxClassSize)
+	studentsPerCourse = requestsPerCourse(new_students)
 	courses = fillCourses(new_students, maxClassSize, studentsPerCourse)
 	filledCourses = getFilledCourses(courses)
 	return filledCourses, new_students
@@ -169,28 +186,35 @@ def geneticAlgorithm(students, maxClassSize, w1, w2):
 	parents = []
 	for i in range(64):
 		parents.append(makeParent(students, maxClassSize))
-	for i in range(7):
-		parentFitness = {}
-		numSurvivors = math.ceil(parents / 2)
+	for i in range(6):
+		parentFitness = []
+		numSurvivors = math.ceil(len(parents) / 2)
 		survivors = []
-		highestFitness = (null, -1)
+		highestFitness = (None, -1)
 		for parent in parents:
-			parentFitness[parent] = macroFitness(parent[1], parent[0], maxClassSize, w1, w2)
+			print(macroFitnessw1(parent[1]))
+			print(macroFitnessw2(parent[0]))
+			x = macroFitness(parent[1], parent[0], w1, w2)
+			parentFitness.append(x)
 			if len(survivors) < numSurvivors:
 				survivors.append(parent)
-				if parentFitness[parent] > highestFitness[1]:
-					highestFitness = (parent, parentFitness[parent])
-			elif parentFitness[parentFitness] < highestFitness[1]:
+				if x > highestFitness[1]:
+					highestFitness = (parent, x)
+			elif x < highestFitness[1]:
 				survivors.append(parent)
 				survivors.remove(highestFitness[0])
 				highestFitness = getHighestFitness(survivors) 
 		parents = []
-		for i in range(survivors // 2):
+		for i in range(len(survivors) // 2):
 			childrenStudents = mutate(survivors[2 * i][1], survivors[2 * i + 1][1])
-			studetnsPerCourse = requestsPerCourse(childrenStudents, maxClassSize)
-			courses = fillCourses(childrenStudents, maxClassSize, studentsPerCourse)
+			studentsPerCourse = requestsPerCourse(childrenStudents[0])
+			courses = fillCourses(childrenStudents[0], maxClassSize, studentsPerCourse)
 			filledCourses = getFilledCourses(courses)
-			parents.append((filledCourses, childrenStudents))
+			parents.append((filledCourses, childrenStudents[0]))
+			studentsPerCourse = requestsPerCourse(childrenStudents[1])
+			courses = fillCourses(childrenStudents[1], maxClassSize, studentsPerCourse)
+			filledCourses = getFilledCourses(courses)
+			parents.append((filledCourses, childrenStudents[1]))
 		print(parentFitness)
 	return parents
 studentsTestData = []
