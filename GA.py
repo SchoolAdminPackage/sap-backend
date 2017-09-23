@@ -1,4 +1,4 @@
-import random, math
+import random, math, copy
 
 #Student has preferences which is a list of tuples of Courses, and a uid
 class Student:
@@ -43,12 +43,14 @@ class FilledCourse(Course):
 	#return list of students
 
 def typeIn(int, lc):
-	print(lc)
-	print(lc[0].period)
-	print(lc[0].uidInstance)
-	print(lc[0].students)
-	print(lc[0].uidType)
+	#print(lc)
+	#print(lc[0].period)
+	#print(lc[0].uidInstance)
+	#print(lc[0].students)
+	#print(lc[0].uidType)
 	for c in lc:
+		if c == None:
+			return True
 		if int == c.uidType:
 			return True
 	return False
@@ -118,19 +120,22 @@ def fillCourses(students, maxClassSize, requestsPerCourse):
 	uidInstance = 0
 	keyList = list(requestsPerCourse.keys())
 	random.shuffle(keyList)
+	#each type of course
 	for course in keyList:
+		#every student in the course
 		for student in requestsPerCourse[course]:
-			switchVarCuzImBadAndNeedACrutch = 1
-			for filledcourse in course.instances:
-				print(student.schedule[filledcourse.period] )
-				if student.schedule[filledcourse.period] == None and len(filledcourse.students) < maxClassSize:
-					#print("case 1")
-					student.schedule[filledcourse.period] = course.createFilled(uidInstance, filledcourse.period)
-					filledcourse.students.append(student)
-					uidInstance += 1
-					switchVarCuzImBadAndNeedACrutch = 0
-					break
-			if (switchVarCuzImBadAndNeedACrutch == 1):
+			switch = 1
+			#if the class already has instances, see if the user can be placed in them instead of creating a new one
+			if len(course.instances) > 0:
+				for filledcourse in course.instances:
+					if student.schedule[filledcourse.period] == None and len(filledcourse.students) < maxClassSize:
+						#print("case 1")
+						student.schedule[filledcourse.period] = filledcourse
+						filledcourse.students.append(student)
+						uidInstance += 1
+						switch = 0
+						break
+			elif switch == 1:
 				#print("case 2")
 				newFilled = course.createFilled(uidInstance, firstAvailiblePeriod(student))
 				student.schedule[firstAvailiblePeriod(student)] = newFilled
@@ -150,7 +155,7 @@ def makeParent(students, maxClassSize):
 	studentsPerCourse = requestsPerCourse(new_students)
 	courses = fillCourses(new_students, maxClassSize, studentsPerCourse)
 	filledCourses = getFilledCourses(courses)
-	return filledCourses, new_students
+	return new_students, filledCourses
 
 #mutate a list of scheduledStudents
 def mutate(l1, l2):
@@ -176,51 +181,66 @@ def mutate(l1, l2):
 def getHighestFitness(parents, w1, w2):
 	max = -1
 	for parent in parents:
-		x = macroFitness(parent[1], parent[0], maxClassSize, w1, w2)
+		x = macroFitness(parent[1], parent[0], w1, w2)
 		if x > max:
 			max = x
 			key = parent
 	return (parent, x)
 
 def geneticAlgorithm(students, maxClassSize, w1, w2):
-	parents = []
-	for i in range(64):
-		parents.append(makeParent(students, maxClassSize))
-	for i in range(6):
-		parentFitness = []
-		numSurvivors = math.ceil(len(parents) / 2)
-		survivors = []
-		highestFitness = (None, -1)
-		for parent in parents:
-			print(macroFitnessw1(parent[1]))
-			print(macroFitnessw2(parent[0]))
-			x = macroFitness(parent[1], parent[0], w1, w2)
-			parentFitness.append(x)
-			if len(survivors) < numSurvivors:
-				survivors.append(parent)
-				if x > highestFitness[1]:
-					highestFitness = (parent, x)
-			elif x < highestFitness[1]:
-				survivors.append(parent)
-				survivors.remove(highestFitness[0])
-				highestFitness = getHighestFitness(survivors) 
-		parents = []
-		for i in range(len(survivors) // 2):
-			childrenStudents = mutate(survivors[2 * i][1], survivors[2 * i + 1][1])
-			studentsPerCourse = requestsPerCourse(childrenStudents[0])
-			courses = fillCourses(childrenStudents[0], maxClassSize, studentsPerCourse)
+	parent_student = []
+	parent_classes = []
+	#generates the parents for students and classes
+	for i in range(128):
+		p = makeParent(students, maxClassSize)
+		parent_student.append(p[0])
+		parent_classes.append(p[1])
+
+	for i in range(7):
+		parent_fitness = {}
+		numParents = len(parent_student)
+		numReproduce = numParents // 2
+		#evaluates fitness for each parent tuple
+		for i in range(len(parent_student)):
+			parent_fitness[i] = macroFitness(parent_student[i], parent_classes[i], w1, w2)
+		#print(parent_fitness)
+		reproducers = list(range(numReproduce))
+		for i in range(numReproduce, numParents):
+			max = -1
+			temp = -1
+			for j in range(len(reproducers)):
+				if parent_fitness[reproducers[j]] > max:
+					parent_fitness[reproducers[j]] = max
+					temp = j
+			if parent_fitness[i] < max:
+				reproducers[j] = i
+		#print(reproducers)
+		nextGen = []
+		for i in range(len(reproducers) // 2):
+			mutation = mutate(parent_student[reproducers[2 * i]], parent_student[reproducers[2 * i + 1]])
+			nextGen.append(mutation[0])
+			nextGen.append(mutation[1])
+		#print(nextGen)
+		parent_student = []
+		parent_student = copy.deepcopy(nextGen)
+		parent_classes = []
+		for students in parent_student:
+			rpc = requestsPerCourse(students)
+			courses = fillCourses(students, maxClassSize, rpc)
 			filledCourses = getFilledCourses(courses)
-			parents.append((filledCourses, childrenStudents[0]))
-			studentsPerCourse = requestsPerCourse(childrenStudents[1])
-			courses = fillCourses(childrenStudents[1], maxClassSize, studentsPerCourse)
-			filledCourses = getFilledCourses(courses)
-			parents.append((filledCourses, childrenStudents[1]))
-		print(parentFitness)
-	return parents
+			parent_classes.append(filledCourses)
+		#print()
+		#print(parent_classes)
+		return parent_student, parent_classes
+
 studentsTestData = []
 coursesTestData = []
 for i in range(4):
 	coursesTestData.append((Course(2 * i), Course(2 * i + 1)))
-for i in range(100):
+for i in range(1000):
 	studentsTestData.append(Student(coursesTestData, i))
-geneticAlgorithm(studentsTestData, 20, 1, 4)
+#above part is checked
+schedule = geneticAlgorithm(studentsTestData, 20, 1, 50)
+print(schedule[0])
+print()
+print(schedule[1])
