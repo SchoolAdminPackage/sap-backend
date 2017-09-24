@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 
-from database import Student, Teacher, Course, CourseMembership, Grade, AttendanceEvent, Period, Day, Assignment, db
+from database import Student, Teacher, Course, CourseMembership, Grade, AttendanceEvent, Period, Day, Assignment, db, PeriodToDay
 
 app = Flask(__name__)
 
@@ -25,8 +25,7 @@ def create_student():
                     
 @app.route('/create/courseMembership', methods=['POST'])
 def create_courseMembership():
-    mem = CourseMembership(student=Student.query.filter_by(id=int(request.json.get('id'))).first(),
-                           course=Course.query.filter_by(title=request.json.get('course')).first())
+    mem = CourseMembership(student=Student.query.filter_by(id=int(request.json.get('id'))).first(), course=Course.query.filter_by(title=request.json.get('course')).first())
     db.session.add(mem)
     db.session.commit()
     
@@ -44,7 +43,7 @@ def all_students_for_teacher():
     return jsonify([{'title': course.title,
                      'teacher_id': course.teacher_id,
                      'period': course.period,
-                     'students': CourseMembership.query( )} for course in Course.query.filter_by(teacher=teacher).all()])
+                     'students': [x.id for x in CourseMembership.query.filter_by(course=course).all()]} for course in Course.query.filter_by(teacher=teacher).all()])
                  
 
 @app.route('/query/allClassAverages', methods=['POST'])
@@ -192,14 +191,14 @@ def create_grade():
                     'title': request.json.get('title')})
 
 
-@app.route('/create/period', methods=['POST'])
-def create_period():
-    period = Period(name=request.json.get('name'))
-    db.session.add(period)
-    db.session.commit()
+# @app.route('/create/period', methods=['POST'])
+# def create_period():
+#     period = Period(name=request.json.get('name'))
+#     db.session.add(period)
+#     db.session.commit()
 
-    return jsonify({'id': period.id,
-                    'name': request.json.get('name')})
+#     return jsonify({'id': period.id,
+#                     'name': request.json.get('name')})
 
 
 @app.route('/create/day', methods=['POST'])
@@ -244,7 +243,44 @@ def query_assignmentsForStudent():
     return jsonify(assignments)
     
 #def create_assignment():
-        
+
+#@app.route('/query/
+
+@app.route('/create/period', methods=['POST'])
+def create_period():
+    name = request.json.get('name')
+    per = Period(name=name)
+    db.session.add(per)
+    db.session.commit()
+
+@app.route('/query/allPeriods', methods=['POST'])
+def query_allPeriods():
+    return jsonify([{'name': x.name} for x in Period.query.all()])
+
+@app.route('/create/mapPeriodToDay', methods=['POST'])
+def create_mapPeriodToDay():
+    period = Period.query.filter_by(name = request.json.get('period')).first()
+    day = Day(date=request.json.get('date'))
+
+    db.session.add(day)
+    db.session.commmit()
+    
+    ptd = PeriodToDay(period=period, day=day)
+    db.session.add(ptd)
+    db.session.commit()
+
+
+@app.route('/query/allPeriodDays', methods=['POST'])
+def query_allPeriodDays():
+    pdms = PeriodToDay.query.all()
+
+    res = []
+    
+    for pdm in pdms:
+        res.append({'date': pdm.day.date, 'period': pdm.period.name})
+
+    return jsonify(res)
+
     
 #@app.route('/create/attendanceEvent', methods=['POST'])
 #def
