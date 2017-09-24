@@ -79,12 +79,16 @@ def all_students():
 @app.route('/query/allCoursesForTeacher', methods=['POST'])
 def all_students_for_teacher():
     teacher = Teacher.query.filter_by(email=request.json.get('teacher_id')).first()
-    print(teacher)
     return jsonify([{'title': course.title,
                      'teacher': course.teacher.email,
                      'period': course.period,
                      'students': [x.id for x in CourseMembership.query.filter_by(course=course).all()]} for course in Course.query.filter_by(teacher=teacher).all()])
                  
+
+@app.route('/EMAILTOINT', methods=['POST'])
+def EMAILTOINT():
+    student = Student.query.filter_by(email=request.json.get('email')).first()
+    return jsonify(student.id)
 
 @app.route('/query/allClassAverages', methods=['POST'])
 def query_grade():
