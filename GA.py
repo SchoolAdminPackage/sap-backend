@@ -243,10 +243,30 @@ def randomCoursePrefs(num, min, max):
 	for i in range(num):
 		ans.append((Course(random.randrange(min, max)), Course(random.randrange(min, max))))
 	return ans
-for i in range(200):
+for i in range(200): 
 	studentsTestData.append(Student(randomCoursePrefs(8, 1, 12), i))
 #above part is checked
 schedule = geneticAlgorithm(studentsTestData, 20, 1, 10)
 #print(schedule[0])
-print()
+#print()
 #print(schedule[1])
+
+#The latter two data points can be made up if need be... student preferences should be a list of 
+#list of tuples.(Each Student has their list of main choice/alts in the form of a tuple) uids 
+#should be a list of the unique identifiers of the students in the same order as student preference
+#you can change this a bit so long as you can get both
+def createschedule(studentPreferences, uids, numberPeriods, maxClassSize):
+	students = []
+	for i in range(len(studentPreferences)):
+		students.append(Student(studentPreferences[i], uids[i]))
+	s, c = geneticAlgorithm(students, maxClassSize, 1, 10)
+	#s = list of ScheduledStudent class that contains a schedule(map: period -> course), and a uid
+	#c = the list of Course instances, with period, uid, and students enrolled in it
+	schedules = []
+	uids []
+	for student in range(s):
+		schedules.append(student.schedule)
+		uids.append(student.uid)
+	courseInstances = []
+
+	#return whatever info ya want fam
