@@ -12,6 +12,9 @@ class Day(db.Model):
     # iso 8601
     date = db.Column(db.String)
 
+    def __json__(self):
+        return {'date': self.date}
+    
 
 class PeriodToDay(db.Model):
 
@@ -24,6 +27,10 @@ class PeriodToDay(db.Model):
 
     day_id = db.Column(db.Integer, db.ForeignKey('days.id'))
     day = db.relationship('Day', foreign_keys=[day_id])
+
+    def __json__(self):
+        return {'period': period.__json__(),
+                'day': day.__json()}
     
     
 class Period(db.Model):
@@ -32,6 +39,9 @@ class Period(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
+
+    def __json__(self):
+        return {'name': self.name}
 
 
 class Student(db.Model):
@@ -43,6 +53,11 @@ class Student(db.Model):
     lastname = db.Column(db.String)
     email = db.Column(db.String)
 
+    def __json__(self):
+        return {'firstname': self.firstname,
+                'lastname': self.lastname,
+                'email': self.email}
+
     
 class Teacher(db.Model):
     
@@ -53,6 +68,11 @@ class Teacher(db.Model):
     lastname = db.Column(db.String)
     email = db.Column(db.String)    
 
+    def __json__(self):
+        return {'firstname': self.firstname,
+                'lastname': self.lastname,
+                'email': self.email}
+    
     
 class Course(db.Model):
     
@@ -65,6 +85,11 @@ class Course(db.Model):
     
     teacher_id = db.Column(db.Integer, db.ForeignKey('teachers.id'))
     teacher = db.relationship('Teacher', foreign_keys=[teacher_id])
+
+    def __json__(self):
+        return {'title': self.title,
+                'period': self.period.__json__(),
+                'teacher': self.teacher.__json__()}
     
 
 class CourseMembership(db.Model):
@@ -79,7 +104,11 @@ class CourseMembership(db.Model):
     course_id = db.Column(db.Integer, db.ForeignKey('courses.id'))
     course = db.relationship('Course', foreign_keys=[course_id])
 
-
+    def __json__(self):
+        return {'student': self.student.__json__(),
+                'course': self.course.__json__()}
+    
+    
 class Grade(db.Model):
     
     __tablename__ = 'grades'
@@ -97,7 +126,16 @@ class Grade(db.Model):
 
     assignment_id = db.Column(db.Integer, db.ForeignKey('assignments.id'))
     assignment = db.relationship('Assignment', foreign_keys=[assignment_id])
+    
+    title = db.Column(db.String)
 
+
+    def __json__(self):
+        return {'student': self.student.__json__(),
+                'course': self.course.__json__(),
+                'pointsEarned': self.pointsEarned}
+                
+    
 
 class Assignment(db.Model):
 
@@ -113,3 +151,25 @@ class Assignment(db.Model):
     # iso 8601 format
     dueDate = db.Column(db.String)
 
+    def __json__(self):
+        return {'name': self.name,
+                'course': self.course.__json__()}
+                
+
+class AttendanceEvent(db.Model):
+    
+    __tablename__ = 'attendanceevents'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    
+    date = db.Column(db.String)
+    
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'))
+    student = db.relationship('Student', foreign_keys=[student_id])
+    
+    tardy = db.Column(db.Boolean, default=True)
+    
+    def __json__(self):
+            return {'date': self.date,
+                    'tardy': self.tardy,
+                    'student': self.student.__json__()}
