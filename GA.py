@@ -1,5 +1,6 @@
 import random, math, copy
 
+#preparsed info I need from db- student preferences, number of periods
 #Student has preferences which is a list of tuples of Courses, and a uid
 class Student:
 	def __init__(self, prefs, uid):
@@ -7,7 +8,7 @@ class Student:
 		self.preferences = prefs
 	#Student has a .createScheduled(courses) method that returns a ProgrammedStudent with given courses and a schedule with each period to a none
 	def createScheduled(self, courses):
-		ss = ScheduledStudent(self.preferences, self.uid, courses, 4)
+		ss = ScheduledStudent(self.preferences, self.uid, courses, 8)
 		return ss
 #ScheduledStudent is a subclass of Student that has a list of Courses and a schedule
 class ScheduledStudent(Student):
@@ -191,36 +192,38 @@ def geneticAlgorithm(students, maxClassSize, w1, w2):
 	parent_student = []
 	parent_classes = []
 	#generates the parents for students and classes
-	for i in range(128):
+	for i in range(30):
 		p = makeParent(students, maxClassSize)
 		parent_student.append(p[0])
 		parent_classes.append(p[1])
 
-	for i in range(7):
+	for i in range(50):
 		parent_fitness = {}
 		numParents = len(parent_student)
 		numReproduce = numParents // 2
 		#evaluates fitness for each parent tuple
 		for i in range(len(parent_student)):
 			parent_fitness[i] = macroFitness(parent_student[i], parent_classes[i], w1, w2)
-		#print(parent_fitness)
+		print(parent_fitness)
 		reproducers = list(range(numReproduce))
 		for i in range(numReproduce, numParents):
 			max = -1
 			temp = -1
 			for j in range(len(reproducers)):
 				if parent_fitness[reproducers[j]] > max:
-					parent_fitness[reproducers[j]] = max
+					max = parent_fitness[reproducers[j]]
 					temp = j
 			if parent_fitness[i] < max:
-				reproducers[j] = i
-		#print(reproducers)
+				reproducers[temp] = i
+		print(reproducers)
 		nextGen = []
+		random.shuffle(reproducers)
 		for i in range(len(reproducers) // 2):
 			mutation = mutate(parent_student[reproducers[2 * i]], parent_student[reproducers[2 * i + 1]])
 			nextGen.append(mutation[0])
 			nextGen.append(mutation[1])
-		#print(nextGen)
+		for index in reproducers:
+			nextGen.append(parent_student[index])
 		parent_student = []
 		parent_student = copy.deepcopy(nextGen)
 		parent_classes = []
@@ -229,18 +232,21 @@ def geneticAlgorithm(students, maxClassSize, w1, w2):
 			courses = fillCourses(students, maxClassSize, rpc)
 			filledCourses = getFilledCourses(courses)
 			parent_classes.append(filledCourses)
+		#print(parent_student)
 		#print()
 		#print(parent_classes)
-		return parent_student, parent_classes
+	return parent_student, parent_classes
 
 studentsTestData = []
-coursesTestData = []
-for i in range(4):
-	coursesTestData.append((Course(2 * i), Course(2 * i + 1)))
-for i in range(1000):
-	studentsTestData.append(Student(coursesTestData, i))
+def randomCoursePrefs(num, min, max):
+	ans = []
+	for i in range(num):
+		ans.append((Course(random.randrange(min, max)), Course(random.randrange(min, max))))
+	return ans
+for i in range(200):
+	studentsTestData.append(Student(randomCoursePrefs(8, 1, 12), i))
 #above part is checked
-schedule = geneticAlgorithm(studentsTestData, 20, 1, 50)
-print(schedule[0])
+schedule = geneticAlgorithm(studentsTestData, 20, 1, 10)
+#print(schedule[0])
 print()
-print(schedule[1])
+#print(schedule[1])
