@@ -1,6 +1,13 @@
 from flask import Flask, request, jsonify
+from integrations.sap import SapIntegration
 
-from database import Student, Teacher, Course, CourseMembership, Grade, db
+si = SapIntegration()
+
+from integrations.gclassroom import initialize_integration
+
+initialize_integration(si)
+
+from database import Student, Teacher, Course, CourseMembership, Grade, AttendanceEvent, Period, Day, Assignment, db, PeriodToDay
 
 app = Flask(__name__)
 
@@ -10,6 +17,37 @@ db.init_app(app)
 
 with app.app_context():
     db.create_all()
+
+    db.session.add(Student(firstname="Liam", lastname="Schumm", email="lschumm@sap.edu"))
+    db.session.add(Teacher(firstname="Anton", lastname="Outkine", email="aoutkine@sap.edu"))
+    
+    db.session.commit()
+
+import base64
+
+def encode(key, string):
+    encoded_chars = []
+    for i in xrange(len(string)):
+        key_c = key[i % len(key)]
+        encoded_c = chr(ord(string[i]) + ord(key_c) % 256)
+        encoded_chars.append(encoded_c)
+    encoded_string = "".join(encoded_chars)
+    return base64.urlsafe_b64encode(encoded_string)
+
+@app.route('/login', methods=['POST'])
+def login():
+    student = Student.query.filter_by(email=request.json.get('email')).first()
+    teacher = Teacher.query.filter_by(email=request.json.get('email')).first()
+    
+    if student != None:
+        return jsonify({'AccountType': 'Student'})
+    
+    elif teacher != None:
+        return jsonify({'AccountType': 'Teacher'})
+        
+    else:
+        return jsonify({'error': 'Invalid credentials.'})
+    
 
 @app.route('/create/student', methods=['POST'])
 def create_student():
@@ -38,7 +76,21 @@ def create_courseMembership():
 def all_students():
     return jsonify([{'firstname': x.firstname, 'lastname': x.lastname, 'email': x.email} for x in Student.query.all()])
 
-@app.route('/query/gradeBreakdowns', methods=['POST'])
+@app.route('/query/allCoursesForTeacher', methods=['POST'])
+def all_students_for_teacher():
+    teacher = Teacher.query.filter_by(email=request.json.get('teacher_id')).first()
+    return jsonify([{'title': course.title,
+                     'teacher': course.teacher.email,
+                     'period': course.period,
+                     'students': [x.id for x in CourseMembership.query.filter_by(course=course).all()]} for course in Course.query.filter_by(teacher=teacher).all()])
+                 
+
+@app.route('/EMAILTOINT', methods=['POST'])
+def EMAILTOINT():
+    student = Student.query.filter_by(email=request.json.get('email')).first()
+    return jsonify(student.id)
+
+@app.route('/query/allClassAverages', methods=['POST'])
 def query_grade():
     grades = Grade.query.filter(student=student).all()
 
@@ -59,7 +111,7 @@ def query_grade():
 
 @app.route('/query/allGrades', methods=['POST'])
 def all_grades():
-    student = Student.query.filter_by(id=int(request.json.get('id'))).first()
+    student = Student.query.filter_by(email=request.json.get('id')).first()
     
     return jsonify([{'title': x.course.title,
                      'pointsEarned': x.pointsEarned,
@@ -88,14 +140,16 @@ def create_teacher():
     
 @app.route('/create/course', methods=['POST'])
 def create_course():
-    teacher = Teacher.query.filter_by(id=int(request.json.get('teacher'))).first()
+    si.issue('global.createClass', request.json.get('title'))
+    teacher = Teacher.query.filter_by(email=request.json.get('teacher')).first()
+    period = Period.query.filter_by(name=request.json.get('name')).first()
     
-    student = Course(title=request.json.get('title'), teacher=teacher)
+    student = Course(title=request.json.get('title'), teacher=teacher, period=period)
     db.session.add(student)
     db.session.commit()
     
     return jsonify({'title': request.json.get('title'),
-                    'teacher': int(request.json.get('teacher')),
+                    'teacher': request.json.get('teacher'),
                     'status': 'Success'})
 
 @app.route('/query/inCourse', methods=['POST'])
