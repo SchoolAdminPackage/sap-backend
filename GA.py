@@ -1,4 +1,4 @@
-import random, math, copy
+import random, math, copy, csv
 
 #preparsed info I need from db- student preferences, number of periods
 #Student has preferences which is a list of tuples of Courses, and a uid
@@ -197,14 +197,14 @@ def geneticAlgorithm(students, maxClassSize, w1, w2):
 		parent_student.append(p[0])
 		parent_classes.append(p[1])
 
-	for i in range(50):
+	for i in range(30):
 		parent_fitness = {}
 		numParents = len(parent_student)
 		numReproduce = numParents // 2
 		#evaluates fitness for each parent tuple
 		for i in range(len(parent_student)):
 			parent_fitness[i] = macroFitness(parent_student[i], parent_classes[i], w1, w2)
-		print(parent_fitness)
+		#print(parent_fitness)
 		reproducers = list(range(numReproduce))
 		for i in range(numReproduce, numParents):
 			max = -1
@@ -215,7 +215,7 @@ def geneticAlgorithm(students, maxClassSize, w1, w2):
 					temp = j
 			if parent_fitness[i] < max:
 				reproducers[temp] = i
-		print(reproducers)
+		#print(reproducers)
 		nextGen = []
 		random.shuffle(reproducers)
 		for i in range(len(reproducers) // 2):
@@ -244,29 +244,110 @@ def randomCoursePrefs(num, min, max):
 		ans.append((Course(random.randrange(min, max)), Course(random.randrange(min, max))))
 	return ans
 for i in range(200): 
-	studentsTestData.append(Student(randomCoursePrefs(8, 1, 12), i))
-#above part is checked
-schedule = geneticAlgorithm(studentsTestData, 20, 1, 10)
+	studentsTestData.append(Student(randomCoursePrefs(8, 1, 40), i))
+#schedule = geneticAlgorithm(studentsTestData, 20, 1, 10)
 #print(schedule[0])
-#print()
 #print(schedule[1])
+
+#file should be in format (to input multiple for the same student keep id the same at the top):
+#id ...
+#main choice (course id)...
+#second choice (course id)...
+def parse(fi):
+	f = open(fi, "r")
+	with f:
+		reader = csv.reader(f)
+		i = 0
+		ids = []
+		mainpref = []
+		backpref = []
+		for row in reader:
+			if i == 0:
+				for e in row:
+					ids.append(int(e))
+			if i == 1:
+				for e in row:
+					mainpref.append(Course(int(e)))
+			if i == 2:
+				for e in row:
+					backpref.append(Course(int(e)))
+			i += 1
+	studentPreferences = []
+	i = 0
+	ci = -1
+	while i < len(ids):
+		cur = ids[i]
+		ci += 1
+		studentPreferences.append([])
+		while i < len(mainpref) and ids[i] == cur:
+			studentPreferences[ci].append((mainpref[i], backpref[i]))
+			i += 1
+	ids = list(set(ids))
+	return studentPreferences, ids
+
 
 #The latter two data points can be made up if need be... student preferences should be a list of 
 #list of tuples.(Each Student has their list of main choice/alts in the form of a tuple) uids 
 #should be a list of the unique identifiers of the students in the same order as student preference
 #you can change this a bit so long as you can get both
-def createschedule(studentPreferences, uids, numberPeriods, maxClassSize):
+def createschedule(studentPreferences, uids, maxClassSize):
 	students = []
+	numberPeriods = len(studentPreferences[0])
 	for i in range(len(studentPreferences)):
 		students.append(Student(studentPreferences[i], uids[i]))
 	s, c = geneticAlgorithm(students, maxClassSize, 1, 10)
 	#s = list of ScheduledStudent class that contains a schedule(map: period -> course), and a uid
 	#c = the list of Course instances, with period, uid, and students enrolled in it
 	schedules = []
-	uids []
-	for student in range(s):
+	uids = []
+	for student in s[0]:
 		schedules.append(student.schedule)
-		uids.append(student.uid)
-	courseInstances = []
+		uids.append(str(student.uid))
+	courseInstances = c
+	return schedules, uids, courseInstances
 
-	#return whatever info ya want fam
+def output(f1, f2, schedules, uids, courseInstances):
+
+	with open(f1, 'w') as csvfile:
+		sf = csv.writer(csvfile)
+		sf.writerow(uids)
+		for i in range(len(schedules[0])):
+			row = []
+			for schedule in schedules:
+				row.append(str(schedule[i].uidInstance))
+			sf.writerow(row)
+	with open(f2, 'w') as csvfile2:
+		cf = csv.writer(csvfile2)
+		cids = []
+		periods = []
+		for c in courseInstances[0]:
+			cids.append(str(c.uidInstance))
+			periods.append(str(c.period))
+		cf.writerow(cids)
+		cf.writerow(periods)
+
+def readtowrite(f, of1, of2):
+	parsed = parse(f)
+	schedule = createschedule(parsed[0], parsed[1], 30)
+	output(of1, of2, schedule[0], schedule[1], schedule[2])
+
+#def makeRandom(fi):
+#	with open(fi, 'w') as csvfile:
+#		fw = csv.writer(csvfile)
+#		ids = []
+#		for i in range(200):
+#			for j in range(8):
+#				ids.append(str(i))
+#		fw.writerow(ids)
+#		row = []
+#		for i in range(800):
+#			row.append(str(random.randrange(1,40)))
+#			row.append(str(random.randrange(1,40)))
+#		fw.writerow(row)
+#		row = []
+#		for i in range(800):
+#			row.append(str(random.randrange(1,40)))
+#			row.append(str(random.randrange(1,40)))
+#		fw.writerow(row)
+#makeRandom('test.csv')
+readtowrite('test.csv', 'students.csv', 'courses.csv')
